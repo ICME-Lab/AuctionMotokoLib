@@ -1,0 +1,35 @@
+{
+  "canisters": {
+    "AuctionMotokoLib_backend": {
+      "main": "src/AuctionMotokoLib_backend/main.mo",
+      "type": "motoko"
+    },
+    "AuctionMotokoLib_frontend": {
+      "dependencies": [
+        "AuctionMotokoLib_backend"
+      ],
+      "frontend": {
+        "entrypoint": "src/AuctionMotokoLib_frontend/src/index.html"
+      },
+      "source": [
+        "src/AuctionMotokoLib_frontend/assets",
+        "dist/AuctionMotokoLib_frontend/"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "dfx": "0.11.1",
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  },
+  "version": 1
+}
