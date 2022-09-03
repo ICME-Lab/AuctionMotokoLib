@@ -1,21 +1,8 @@
 {
   "canisters": {
-    "AuctionMotokoLib_backend": {
-      "main": "src/AuctionMotokoLib_backend/main.mo",
+    "backend": {
+      "main": "src/example/backend/main.mo",
       "type": "motoko"
-    },
-    "AuctionMotokoLib_frontend": {
-      "dependencies": [
-        "AuctionMotokoLib_backend"
-      ],
-      "frontend": {
-        "entrypoint": "src/AuctionMotokoLib_frontend/src/index.html"
-      },
-      "source": [
-        "src/AuctionMotokoLib_frontend/assets",
-        "dist/AuctionMotokoLib_frontend/"
-      ],
-      "type": "assets"
     }
   },
   "defaults": {

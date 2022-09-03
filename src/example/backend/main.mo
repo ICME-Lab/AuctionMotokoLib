@@ -1,7 +1,11 @@
-import Auction "../../Auction";
 
+=======
+import Auciton "../../Auction";
+import Debug "mo:base/Debug";
 actor {
-  public func greet(name : Text) : async Text {
-    return "Hello, " # name # "!";
-  };
-};
+
+  public func test() {
+    Auciton.test();
+  }
+}
+>>>>>>> normalEnglishAuction
