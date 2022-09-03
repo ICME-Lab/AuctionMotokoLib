@@ -84,6 +84,10 @@ module {
       let result = (newBid.1 > buyoutPrice);
       if (result != _if) null else ?this;
     };
+    public func isEmptyLocks( _if: Bool): ?State {
+      let result = (List.isNil<Bid>(locks));
+      if (result != _if) null else ?this;
+    };
 
     // public func canSelect(): ?State {
     //   let result = List.isNil<Bid>(bids);
