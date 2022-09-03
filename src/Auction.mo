@@ -1,5 +1,4 @@
 
-=======
 import List "mo:base/List";
 import Debug "mo:base/Debug";
 import Time "mo:base/Time";
@@ -87,6 +86,4 @@ module {
     }
 
   };
-
->>>>>>> normalEnglishAuction
 }
