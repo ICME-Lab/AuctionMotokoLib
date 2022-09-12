@@ -10,103 +10,104 @@ module {
   public type Bids = List.List<Bid>;
 
 
-  public class State(_auctionType: Text, _bidHistory: Bids, _locks: Bids, _phaseEndTime: Time.Time, _phaseCount: Nat, _buyoutPrice: Nat, _reservePrice: Nat) : State = this {
+  public class State(
+    _auctionType: Text,
+    _bidList: Bids,
+    _phaseEndTime: Time.Time,
+    _phaseCount: Nat,
+    _buyoutPrice: Nat,
+    _reservePrice: Nat,
+    
+    ) : State = this {
     // vars
     public var auctionType = _auctionType;
-    public var bidHistory =_bidHistory;
-    public var locks = _locks;
+    public var bidList =_bidList;
     public var phaseEndTime = _phaseEndTime;
     public var phaseCount = _phaseCount;
     public var buyoutPrice = _buyoutPrice;
     public var reservePrice = _reservePrice;
 
+    // public var resutl: Result.Result<(),Text> = #ok;
+    public var result: Text = "";
+
     public func copy(): State {
-      State(auctionType, bidHistory, locks, phaseEndTime, phaseCount, buyoutPrice, reservePrice);
+      State(auctionType, bidList, phaseEndTime, phaseCount, buyoutPrice, reservePrice);
     };
 
     /* cond */
+    public func isAuctionType(t: Text) : ?State {
+      if (auctionType == t) return ?this
+      else {
+        result := "isAuctionType";
+        null;
+      };
+    };
     public func isOverEndTime(_if: Bool): ?State {
-      let result = (Time.now() > phaseEndTime);
-      if (result != _if) null else ?this;
+      let r = (Time.now() > phaseEndTime);
+      if (r != _if) {
+        result := "isOverEndTime";
+        null;
+      } else ?this;
     };
     public func isLastTimeToEnd(_if: Bool, within: Int): ?State {
-      let result = (within > (phaseEndTime - Time.now()));
-      if (result != _if) null else ?this;
+      let r = (within > (phaseEndTime - Time.now()));
+      if (r != _if) {
+        result := "isLastTimeToEnd";
+        null;
+      } else ?this;
     };
     public func isOverPhaseCount(count: Nat, _if: Bool): ?State {
-      let result = (phaseCount > count);
-      if (result != _if) null else ?this;
+      let r = (phaseCount > count);
+      if (r != _if) {
+        result := "isOverPhaseCount";
+        null;
+      } else ?this;
     };
-    public func isHigherPrevBid(newBid: Bid, _if: Bool): ?State {
-      let result = switch (List.get<Bid>(bidHistory, 0)) {
+    public func isHigherThanPrevBid(newBid: Bid, _if: Bool): ?State {
+      let r = switch (List.get<Bid>(bidList, 0)) {
         case (null) true;
-        case (?highestBid) {
-          if(newBid.1 > highestBid.1) true else false;
+        case (?lastBid) {
+          if(newBid.1 > lastBid.1) true else false;
         };
       };
-      if (result != _if) null else ?this;
+      if (r != _if) {
+        result := "isHigherPrevBid";
+        null;
+      } else ?this;
     };
     public func isFirstTimeBidderEver(newBid: Bid, _if: Bool): ?State {
-      var result = false;
-      List.iterate<Bid>(bidHistory, func(bid){
+      var r = false;
+      List.iterate<Bid>(bidList, func(bid){
         if (bid.0 == newBid.0) {
-          result := true;
+          r := true;
           return;
         };
       });
-      if (result != _if) null else ?this;
+      if (r != _if) {
+        result := "isFirstTimeBidderEver";
+        null;
+      } else ?this;
     };
-    public func isLockedBid(newBid: Bid, _if: Bool): ?State {
-      var result = false;
-      List.iterate<Bid>(locks, func(bid){
-        if (bid == newBid) {
-          result := true;
-          return;
-        };
-      });
-      if (result != _if) null else ?this;
-    };
-    public func isLockedBidder(newBid: Bid, _if: Bool): ?State {
-      var result = false;
-      List.iterate<Bid>(locks, func(bid){
-        if (bid.0 == newBid.0) {
-          result := true;
-          return;
-        };
-      });
-      if (result != _if) null else ?this;
-    };
+    
     public func isOverReservePrice(newBid: Bid, _if: Bool): ?State {
-      let result = (newBid.1 > reservePrice);
-      if (result != _if) null else ?this;
+      let r = (newBid.1 > reservePrice);
+      if (r != _if) {
+        result := "isOverReservePrice";
+        null;
+      } else ?this;
     };
     public func isOverbuyoutPrice(newBid: Bid, _if: Bool): ?State {
-      let result = (newBid.1 > buyoutPrice);
-      if (result != _if) null else ?this;
+      let r = (newBid.1 > buyoutPrice);
+      if (r != _if) {
+        result := "isOverbuyoutPrice";
+        null;
+      } else ?this;
     };
-    public func isEmptyLocks( _if: Bool): ?State {
-      let result = (List.isNil<Bid>(locks));
-      if (result != _if) null else ?this;
-    };
-
-    // public func canSelect(): ?State {
-    //   let result = List.isNil<Bid>(bids);
-    //   return ?this;
-    // };
 
     /* do */
     // bidding
-    public func pushBidHistory(newBid: Bid): ?State {
-      bidHistory := List.push<Bid>(newBid, bidHistory);
-      return ?this;
-    };
-    // !!!!! WIP popの代用
-    public func replaceTopOrPushToLocks(newBid: Bid): ?State {
-      locks := switch locks {
-        case (?(h,t)) ?(newBid, t);
-        case (null) ?(newBid, null);
-      };
-      // locks := List.push<Bid>(newBid, List.pop<Bid>(locks));
+    public func pushBid(newBid: Bid): ?State {
+      bidList := List.push<Bid>(newBid, bidList);
       return ?this;
     };
 
@@ -128,18 +129,6 @@ module {
         return ?this
       }
     };
-    public func unLockBidUnderPrice(price: Nat): ?State {
-      locks := List.filter<Bid>(locks, func(bid) {
-        if (price > bid.1) {
-          // WIP unlock処理
-          return false;
-        }
-        else {
-          return true;
-        }
-      });
-      return ?this;
-    };
 
     // /* mutch */
     public func match(cond: ?State, fn: State->?State, fn_null: State->?State): ?State {
@@ -154,7 +143,7 @@ module {
 
     /* show */
     public func showBids(): Bids {
-      bidHistory;
+      bidList;
     }
   };
 }
