@@ -3,6 +3,10 @@
     "main": {
       "main": "src/AuctionSample.mo",
       "type": "motoko"
+    },
+    "test": {
+      "main": "src/AuctionTest.mo",
+      "type": "motoko"
     }
   },
   "defaults": {

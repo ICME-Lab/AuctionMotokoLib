@@ -9,6 +9,7 @@ import HashMap "mo:base/HashMap";
 import Result "mo:base/Result";
 import Nat "mo:base/Nat";
 import Hash "mo:base/Hash";
+import Debug "mo:base/Debug";
 
 
 
@@ -21,7 +22,7 @@ module {
     locked: Bool;
   };
 
-  public class FungibleTokens() {
+  public class FungibleTokens() = this {
 
     let ZERO_VALUE: Value = 0;
     let EMPTY_ACCOUNT: Account = {
@@ -36,19 +37,40 @@ module {
     let tokenEntries: [(AccountId, Account)] = [];
     let tokens = HashMap.fromIter<AccountId, Account>(tokenEntries.vals(), 0, equalId, hashId);
 
-    public func subdivide((user, sub): AccountId, amount: Value) {
+    public func wrap(user: Principal, amount: Value) {
+      let mainAccountId = (user, 0);
+      let mainAccount = switch (tokens.get(mainAccountId)) {
+        case (?account) {
+          {
+            value = account.value + amount;
+            locked = false; // main account is always unlocked
+          }
+        };
+        case (_) {
+          {
+            value = ZERO_VALUE + amount;
+            locked = false; // main account is always unlocked
+          }
+        }
+      };
+
+      // change state
+      tokens.put(mainAccountId, mainAccount);
+    };
+
+    public func subdivide((user, sub): AccountId, amount: Value): Result.Result<(), Text> {
       let mainAccountId = (user, 0);
       let subAccountId = (user, sub);
 
       let mainAccount = switch (tokens.get(mainAccountId)) {
         case (?account) {
-          if (amount > account.value) return (); // WIP
+          if (amount > account.value) return #err("InsufficientFunds");
           {
             value = account.value - amount;
             locked = false; // main account is always unlocked
           }
         };
-        case (_) return ();
+        case (_) return #err("InsufficientFunds -The account does not exist.-");
       };
       let subAccount = switch (tokens.get(subAccountId)) {
         case (?account) {
@@ -69,6 +91,39 @@ module {
       tokens.put(mainAccountId, mainAccount);
       tokens.put(subAccountId, subAccount);
 
+      return #ok;
+
+    };
+
+    public func putbackAll((user, sub): AccountId): Result.Result<(), Text> {
+      let mainAccountId = (user, 0);
+      let subAccountId = (user, sub);
+      let subAccount = this.balance(subAccountId);
+
+      if (subAccount.locked == true) return #err("The Account is locked");
+
+      let mainAccount = switch (tokens.get(mainAccountId)) {
+        case (?account) {
+          {
+            value = account.value + subAccount.value;
+            locked = false; // main account is always unlocked
+          }
+        };
+        case (_) {
+          /* If it comes here, it might be wrong. */
+          Debug.print(" it might be wrong");
+          {
+            value = ZERO_VALUE + subAccount.value;
+            locked = false; // main account is always unlocked
+          }
+        };
+      };
+
+      // change state
+      tokens.put(mainAccountId, mainAccount);
+      tokens.put(subAccountId, EMPTY_ACCOUNT); // subAcount must be empty
+
+      return #ok;
     };
 
     public func balance(accountId: AccountId): Account {
@@ -123,7 +178,7 @@ module {
       tokens.put(accountId, account);
     };
       // only service
-    public func pay(to: Principal, from: Principal, sub: Nat, amount: Value) {
+    public func pay(to: Principal, from: Principal, sub: Nat, amount: Value): Result.Result<(), Text> {
       if (sub == 0) assert(false); // WIP, error handling
 
       let toAccountId = (to, 0);
@@ -131,14 +186,14 @@ module {
 
       let fromAccount = switch (tokens.get(fromAccountId)) {
         case (?account) {
-          if (amount > account.value) return (); // WIP
-          if (account.locked != true) return (); // WIP
+          if (amount > account.value) return #err("InsufficientFunds");
+          if (account.locked != true) return #err("Account is already locked");
           {
             value = account.value - amount;
             locked = false; // 
           }
         };
-        case (_) return (); // WIP
+        case (_) return #err("InsufficientFunds -The \"from\" account does not exist.-");
       };
 
       let toAccount = switch (tokens.get(toAccountId)) {
@@ -148,12 +203,14 @@ module {
             locked = false; // 
           }
         };
-        case (_) return (); // WIP, Return error or initialize hashmap value
+        case (_) return #err("The \"to\" account does not exist"); // WIP, Return error or initialize hashmap value
       };
 
       // change state
       tokens.put(toAccountId, toAccount);
       tokens.put(fromAccountId, fromAccount);
+
+      return #ok;
 
     };
   };
