@@ -10,18 +10,23 @@ import Result "mo:base/Result";
 import Nat "mo:base/Nat";
 import Hash "mo:base/Hash";
 import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
 
 
 
 module {
 
   public type TokenId = Nat;
+  public type Entries = [(TokenId, Principal)];
 
-  public class NonFungibleTokens() = this {
+  public class NonFungibleTokens(tokenEntries: Entries) = this {
 
     // Tokens under management by this service
-    let tokenEntries: [(TokenId, Principal)] = [];
     let tokens = HashMap.fromIter<TokenId, Principal>(tokenEntries.vals(), 0, Nat.equal, Hash.hash);
+
+    public func export(): Entries {
+      Iter.toArray(tokens.entries());
+    };
 
     public func wrap(tokenId: TokenId, owner: Principal): Result.Result<(), Text> {
       switch (tokens.get(tokenId)) {

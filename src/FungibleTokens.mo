@@ -10,6 +10,7 @@ import Result "mo:base/Result";
 import Nat "mo:base/Nat";
 import Hash "mo:base/Hash";
 import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
 
 
 
@@ -21,8 +22,9 @@ module {
     value: Value;
     locked: Bool;
   };
+  public type Entries = [(AccountId, Account)];
 
-  public class FungibleTokens() = this {
+  public class FungibleTokens(tokenEntries: Entries) = this {
 
     let ZERO_VALUE: Value = 0;
     let EMPTY_ACCOUNT: Account = {
@@ -34,8 +36,11 @@ module {
     func hashId(a: AccountId): Hash.Hash {Text.hash(Principal.toText(a.0) # Nat.toText(a.1))};
 
     // Tokens under management by this service
-    let tokenEntries: [(AccountId, Account)] = [];
     let tokens = HashMap.fromIter<AccountId, Account>(tokenEntries.vals(), 0, equalId, hashId);
+
+    public func export(): Entries {
+      Iter.toArray(tokens.entries());
+    };
 
     public func wrap(user: Principal, amount: Value) {
       let mainAccountId = (user, 0);
@@ -73,7 +78,7 @@ module {
 
       // change state
       tokens.put(mainAccountId, mainAccount);
-      
+
       return #ok;
     };
 

@@ -10,6 +10,7 @@ import Time "mo:base/Time";
 import Ledger "Ledger/Ledger";
 import FungibleTokens "FungibleTokens";
 import NonFungibleTokens "NonFungibleTokens";
+import Iter "mo:base/Iter";
 
 module {
   /* Types */
@@ -50,8 +51,10 @@ module {
     transfer: (NonFungibleTokens.TokenId, Principal) -> ();
   };
 
+  public type Entries = [(AuctionId, AuctionState)];
+
   /* Class */
-  public class Auction(installer: Principal, fTokens: FTokens, nfTokens: NfTokens) {
+  public class Auction(installer: Principal, fTokens: FTokens, nfTokens: NfTokens, auctionEntries: Entries) {
 
     public let SEC = 1_000_000_000;
     public let MINUTES =  60 * SEC;
@@ -67,8 +70,11 @@ module {
     let AUCTION_PERIOD = 10 * MINUTES;
 
     // Tokens under management by this service
-    let auctionEntries: [(AuctionId, AuctionState)] = [];
     let auctions = HashMap.fromIter<AuctionId, AuctionState>(auctionEntries.vals(), 0, Nat.equal, Hash.hash);
+
+    public func export(): Entries {
+      Iter.toArray(auctions.entries())
+    };
     
     public func enBid(auctionId: AuctionId, bidder: Principal): Result.Result<(), Text>{
 

@@ -153,10 +153,7 @@ shared ({caller=installer}) actor class AuctionTest() {
     assert(fTokens.putbackAll((Bob, auctionId)) == #ok() );
     assert(fTokens.putbackAll((Carol, auctionId)) == #ok() );
 
-
-
-
-
+    
   }
 
 

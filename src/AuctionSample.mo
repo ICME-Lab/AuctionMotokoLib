@@ -12,7 +12,7 @@ import FungibleTokens "FungibleTokens";
 import NonFungibleTokens "NonFungibleTokens";
 import Auction "Auction";
 
-shared ({caller=installer}) actor class AuctionSample() {
+shared ({caller=installer}) actor class AuctionSample() = this {
 
   /* Types */
   public type NfTokenId = Nat;
@@ -25,14 +25,36 @@ shared ({caller=installer}) actor class AuctionSample() {
   };
 
   /*  */
+  // stable var ledgerEntires: Ledger.Entries = {
+  //   controller = Principal.fromActor(this);
+  //   ledgerCanisterId = Ledger.defaultLedgerCanisterId();
+  //   gas = Ledger.defaultLedgerGas();
+  // };
+  stable var fTokenEntries: FungibleTokens.Entries = [];
+  stable var nfTokenEntries: NonFungibleTokens.Entries = [];
+  stable var auctionEntries: Auction.Entries = [];
+
   // Ledger canister controller
-  var ledger = Ledger.Ledger(installer);
+  var ledger = Ledger.Ledger(Ledger.defaultLedgerCanisterId());
   // Wraped ICP controller
-  var fTokens = FungibleTokens.FungibleTokens();
+  let fTokens = FungibleTokens.FungibleTokens(fTokenEntries);
   // Wraped NFT controller
-  var nfTokens =  NonFungibleTokens.NonFungibleTokens();
+  let nfTokens = NonFungibleTokens.NonFungibleTokens(nfTokenEntries);
   // Auction controller
-  var auction = Auction.Auction(installer, fTokens, nfTokens);
+  let auctions = Auction.Auction(installer, fTokens, nfTokens, auctionEntries);
+
+  /* System */
+  system func preupgrade() {
+    // ledgerEntires := ledger.export();
+    fTokenEntries := fTokens.export();
+    nfTokenEntries := nfTokens.export();
+    auctionEntries := auctions.export();
+  };
+  system func postupgrade() {
+    fTokenEntries := [];
+    nfTokenEntries := [];
+    auctionEntries := [];
+  };
 
   /* helper functions */
   func toNfTokenIdFromAuctionId(nfTokenId: NfTokenId): AuctionId {
@@ -43,13 +65,13 @@ shared ({caller=installer}) actor class AuctionSample() {
   /* public functions */
   // create payment account
   public shared ({caller}) func paymentAccountId(): async Text {
-    ledger.paymentAccountId(caller)
+    ledger.paymentAccountId(Principal.fromActor(this), caller)
   };
 
   // take in new payment
   public shared ({caller}) func wrap(): async Result.Result<(Ledger.BlockIndex, Ledger.Tokens), Error> {
     // recieve icp
-    let (blockIndex, tokens) = switch (await ledger.takeinPayment(caller)) {
+    let (blockIndex, tokens) = switch (await ledger.takeinPayment(Principal.fromActor(this), caller)) {
       case (#ok(o)) o;
       case (#err(e)) return #err(#Ledger(e));
     };
@@ -102,7 +124,7 @@ shared ({caller=installer}) actor class AuctionSample() {
     なので，落札時に全ての残高を支払うと不整合になる可能性がある．　-> 落札額のみ支払っているからおk
     */
 
-    switch (auction.enBid(auctionId, caller)) {
+    switch (auctions.enBid(auctionId, caller)) {
       case (#ok(_)) {};
       case (#err(e)) return #err(#Auction(e));
     };
@@ -124,13 +146,13 @@ shared ({caller=installer}) actor class AuctionSample() {
   public shared ({caller}) func start(nfTokenId: NfTokenId): async Result.Result<(), Text> {
     if (not nfTokens.isOwner(nfTokenId, caller)) return #err("");
     let auctionId = nfTokenId;
-    auction.start(auctionId, caller)
+    auctions.start(auctionId, caller)
   };
 
   public shared ({caller}) func end(nfTokenId: NfTokenId): async Result.Result<(), Text> {
     // if (not nfTokens.isOwner(nfTokenId, caller)) return #err("");
     let auctionId = nfTokenId;
-    auction.end(auctionId)
+    auctions.end(auctionId)
   };
 
 

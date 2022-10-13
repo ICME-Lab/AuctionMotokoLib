@@ -32,6 +32,12 @@ module {
 
   public type AssetId = (Principal, Nat);
 
+  public type Entries = {
+    controller: Principal;
+    ledgerCanisterId: Principal;
+    gas: Nat64;
+  };
+
   /* Utls functions */
   public func toSubAccount(principal : Principal) : [Nat8] {
     let sub_nat32byte : [Nat8] = Blob.toArray(Text.encodeUtf8(Principal.toText(principal)));
@@ -44,37 +50,34 @@ module {
     return Blob.fromArray(Hex.decode(AID.fromPrincipal(p, ?subAccount)));
   };
 
+  public func defaultLedgerCanisterId(): Principal {
+    Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
+  };
+  public func defaultLedgerGas(): Nat64 {
+    10_000;
+  };
+
 
   /* Class */
-  public class Ledger(installer: Principal) {
-    let DefaultLedgerCanisterId: Principal = Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai");
-    var ledgerCanisterId: Principal = DefaultLedgerCanisterId;
-    var ledger : Interface = actor(Principal.toText(ledgerCanisterId));
+  public class Ledger(_ledgerCanisterId: Principal) {
+
+    var ledgerCanisterId: Principal = _ledgerCanisterId;
     var gas: Nat64 = 10_000;
+
+    let ledger : Interface = actor(Principal.toText(ledgerCanisterId));
     let SUBACCOUNT_ZERO : [Nat8] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-    var installerAccountId: Blob = toBlobAccountId(installer, SUBACCOUNT_ZERO);
+    func controllerAccountId(controller: Principal): Blob = toBlobAccountId(controller, SUBACCOUNT_ZERO);
 
-    // func equalAssetId(a: AssetId, b: AssetId): Bool {
-    //   a.0 == b.0 and a.1 == b.1
-    // };
-    // func hashAssetId(a: AssetId): Hash.Hash {
-    //   Text.hash(Principal.toText(a.0) # Nat.toText(a.1))
-    // };
-
-    // Tokens under management by this service
-    // let assetsEntries: [(AssetId, Tokens)] = [];
-    // let assets = HashMap.fromIter<AssetId, Tokens>(assetsEntries.vals(), 0, equalAssetId, hashAssetId);
-
-    public func paymentAccountId(userPrincipal: Principal): Text {
-      toTextPaymentAccountId(userPrincipal)
+    public func paymentAccountId(controller: Principal, userPrincipal: Principal): Text {
+      toTextPaymentAccountId(controller, userPrincipal)
     };
 
-    func toPaymentBlobAccountId(userPrincipal: Principal): BlobAccountIdentifier {
-      toBlobAccountId(installer, toSubAccount(userPrincipal));
+    func toPaymentBlobAccountId(controller: Principal, userPrincipal: Principal): BlobAccountIdentifier {
+      toBlobAccountId(controller, toSubAccount(userPrincipal));
     };
 
-    func toTextPaymentAccountId(userPrincipal: Principal): TextAccountIdentifier {
-      Hex.encode(Blob.toArray(toPaymentBlobAccountId(userPrincipal)));
+    func toTextPaymentAccountId(controller: Principal, userPrincipal: Principal): TextAccountIdentifier {
+      Hex.encode(Blob.toArray(toPaymentBlobAccountId(controller, userPrincipal)));
     };
 
     func balanceOfAccountId(blobAccountId: BlobAccountIdentifier): async Tokens {
@@ -83,9 +86,9 @@ module {
       });
     };
 
-    public func takeinPayment(userPrincipal: Principal): async Result.Result<(BlockIndex, Tokens), TransferError> {// ここの型を後で変える．
+    public func takeinPayment(controller: Principal, userPrincipal: Principal): async Result.Result<(BlockIndex, Tokens), TransferError> {// ここの型を後で変える．
       let subAccount = toSubAccount(userPrincipal);
-      let paymentBlobAccountId = toPaymentBlobAccountId(userPrincipal);
+      let paymentBlobAccountId = toPaymentBlobAccountId(controller, userPrincipal);
       let accountBalance = await balanceOfAccountId(paymentBlobAccountId);
 
       if (gas > accountBalance.e8s) return #err(#BadFee({expected_fee={e8s=gas}}));
@@ -97,7 +100,7 @@ module {
         amount: Tokens = transferAmount;
         fee: Tokens = {e8s=gas};
         from_subaccount: ?SubAccount = ?Blob.fromArray(subAccount);
-        to: BlobAccountIdentifier = installerAccountId;
+        to: BlobAccountIdentifier = controllerAccountId(controller);
         created_at_time: ?TimeStamp = null;
       };
       switch(await ledger.transfer(args)) {
