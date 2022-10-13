@@ -58,6 +58,25 @@ module {
       tokens.put(mainAccountId, mainAccount);
     };
 
+    public func unwrap(user: Principal, amount: Value): Result.Result<(), Text> {
+      let mainAccountId = (user, 0);
+      let mainAccount = switch (tokens.get(mainAccountId)) {
+        case (?account) {
+          if (amount > account.value) return #err("InsufficientFunds");
+          {
+            value = account.value - amount;
+            locked = false; // main account is always unlocked
+          }
+        };
+        case (_) return #err("InsufficientFunds");
+      };
+
+      // change state
+      tokens.put(mainAccountId, mainAccount);
+      
+      return #ok;
+    };
+
     public func subdivide((user, sub): AccountId, amount: Value): Result.Result<(), Text> {
       let mainAccountId = (user, 0);
       let subAccountId = (user, sub);

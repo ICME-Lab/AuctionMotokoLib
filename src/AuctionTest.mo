@@ -132,6 +132,27 @@ shared ({caller=installer}) actor class AuctionTest() {
     auctions.set(auctionId, state);
     assert(auctions.enBid(auctionId, Bob) == #err("Auctio is over"));
 
+    assert(fTokens.putbackAll((Carol, auctionId)) == #err("The Account is locked") );
+
+    
+    assert(auctions.end(auctionId) == #ok());
+
+
+    // check receive payment
+    assert(fTokens.balance((Alice, 0)).value == 50_000);
+    assert(fTokens.balance((Carol, 0)).value == 30_000);
+    assert(fTokens.balance((Carol, 1)).value == 0);
+    assert(fTokens.balance((Carol, 1)).locked == false);
+    assert(fTokens.balance((Bob, 1)).locked == false);
+
+    assert(nfTokens.isOwner(nfTokenId, Alice) == false);
+    assert(nfTokens.isOwner(nfTokenId, Bob) == false);
+    assert(nfTokens.isOwner(nfTokenId, Carol) == true);
+
+    // put back bid price of bob
+    assert(fTokens.putbackAll((Bob, auctionId)) == #ok() );
+    assert(fTokens.putbackAll((Carol, auctionId)) == #ok() );
+
 
 
 
